@@ -4,44 +4,48 @@ import os
 import json
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+import time
 
 # --- 1. Waktu sekarang ---
 now_utc = datetime.datetime.utcnow()
 now_wib = now_utc + datetime.timedelta(hours=7)
 today_str = now_utc.date().isoformat()
 
-# --- 2. Ambil data dari API ---
+# --- 2. Ambil data dari API dengan retry ---
 url = f"https://flowscan-builder-data-production.up.railway.app/api/builders/all-daily-revenue?startDate={today_str}&endDate={today_str}"
-response = requests.get(url, timeout=20)
-response.raise_for_status()
-data = response.json()
-daily_revenue = data.get("data", {}).get("dailyRevenue", {})
+
+daily_revenue = {}
+success = False
+for i in range(3):
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        daily_revenue = data.get("data", {}).get("dailyRevenue", {})
+        success = True
+        break
+    except Exception as e:
+        print(f"Attempt {i+1} failed: {e}")
+        if i < 2:
+            time.sleep(5)
+        else:
+            print("❌ Failed to fetch data after 3 attempts.")
 
 # --- 3. Target builder ---
 target_builders = ["metamask", "phantom", "basedapp"]
 
-# --- 4. Filter revenue ---
+# --- 4. Filter revenue atau kasih not found kalau gagal ---
 filtered = {}
-for date, builders in daily_revenue.items():
-    filtered[date] = {}
-    for b in target_builders:
-        value = builders.get(b)
-        filtered[date][b] = f"${value:,.2f}" if value else "❌ not found"
-
-# --- 5. Simpan log harian ---
-log_file = "revenue_log.json"
-if os.path.exists(log_file):
-    with open(log_file, "r") as f:
-        log_data = json.load(f)
+if success and daily_revenue:
+    for date, builders in daily_revenue.items():
+        filtered[date] = {}
+        for b in target_builders:
+            value = builders.get(b)
+            filtered[date][b] = f"${value:,.2f}" if value else "❌ not found"
 else:
-    log_data = {}
+    filtered[today_str] = {b: "❌ data not available" for b in target_builders}
 
-log_data[today_str] = filtered[today_str] if today_str in filtered else {}
-
-with open(log_file, "w") as f:
-    json.dump(log_data, f, indent=2)
-
-# --- 6. Format HTML email ---
+# --- 5. Format HTML email ---
 table_rows = ""
 for date, items in filtered.items():
     table_rows += f"""
@@ -73,12 +77,12 @@ html_content = f"""
 </html>
 """
 
-# --- 7. Kirim email ---
+plain_text_content = "Hourly Revenue Update for MetaMask, Phantom, BasedApp."
+
+# --- 6. Kirim email ---
 SENDGRID_API_KEY = os.environ["SENDGRID_API_KEY"]
 FROM_EMAIL = os.environ["FROM_EMAIL"]
 TO_EMAIL = os.environ["TO_EMAIL"]
-
-plain_text_content = "Hourly Revenue Update for MetaMask, Phantom, BasedApp."
 
 message = Mail(
     from_email=FROM_EMAIL,
