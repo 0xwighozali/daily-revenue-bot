@@ -47,16 +47,16 @@ daily_revenue = data.get("data", {}).get("dailyRevenue", {})
 # === Format pesan ===
 rows = []
 for date, builders in daily_revenue.items():
-    row = f"📅 <b>{date}</b>\n"
+    row = f"📅 {date}\n"
     for b in target_builders:
         value = builders.get(b)
         row += f"• {b.capitalize()}: ${value:,.2f}\n" if value else f"• {b.capitalize()}: ❌ not found\n"
     rows.append(row)
 
 text = (
-    "🚀 <b>Daily Revenue Update</b>\n\n"
+    "🚀 Daily Revenue Update\n\n"
     + "\n".join(rows)
-    + f"\n⏰ <b>Last updated:</b>\nUTC: {now_utc.strftime('%Y-%m-%d %H:%M:%S')}\nWIB: {now_wib.strftime('%Y-%m-%d %H:%M:%S')}"
+    + f"\n⏰ Last updated:\nUTC: {now_utc.strftime('%Y-%m-%d %H:%M:%S')}\nWIB: {now_wib.strftime('%Y-%m-%d %H:%M:%S')}"
 )
 
 # === Escape HTML special characters & batas panjang pesan ===
