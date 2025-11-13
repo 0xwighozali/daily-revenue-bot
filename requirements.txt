@@ -1,2 +1,1 @@
-requests
-sendgrid
+requests==2.31.0

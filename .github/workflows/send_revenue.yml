@@ -1,13 +1,12 @@
-name: Send Hourly Revenue
+name: Send Hourly Revenue to Telegram
 
-# Run tiap jam di menit 0
 on:
   schedule:
-    - cron: "0 * * * *"
-  workflow_dispatch:
+    - cron: "0 * * * *" # tiap jam UTC
+  workflow_dispatch: # bisa dijalankan manual juga
 
 jobs:
-  send_email:
+  send_telegram:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -22,10 +21,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run revenue script
+      - name: Run script
         env:
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
-          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python send_revenue.py
